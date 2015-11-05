@@ -1,41 +1,25 @@
 package org.irenical.shifty;
 
-import java.lang.ref.WeakReference;
-import java.lang.reflect.Method;
-import java.util.Collections;
-import java.util.Map;
-import java.util.WeakHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.function.Consumer;
-import java.util.function.Function;
 import java.util.function.Supplier;
 
-import net.sf.cglib.proxy.Callback;
-import net.sf.cglib.proxy.Enhancer;
-import net.sf.cglib.proxy.MethodInterceptor;
-import net.sf.cglib.proxy.MethodProxy;
-
 public class Shifty<API> {
-
-  private final Map<API, WeakReference<API>> proxies = Collections.synchronizedMap(new WeakHashMap<>());
-
-  private final Callback interceptor = new MethodInterceptor() {
-    @Override
-    public Object intercept(Object obj, Method method, Object[] args, MethodProxy proxy) throws Throwable {
-      return proxy.invokeSuper(obj, args);
-    }
-  };
-
-  private ExecutorService executorService = Executors.newCachedThreadPool();
+  
+  private ExecutorService executorService;
 
   private Supplier<API> supplier;
 
-  public Shifty() {
+  public Shifty(Supplier<API> supplier) {
+    setSupplier(supplier);
   }
 
   public void setSupplier(Supplier<API> supplier) {
+    if (supplier == null) {
+      throw new ShiftyException("This shifty instance has no provider. Set one before calling call() or async()");
+    }
     this.supplier = supplier;
   }
 
@@ -50,52 +34,44 @@ public class Shifty<API> {
   public ExecutorService getExecutorService() {
     return executorService;
   }
-
-  private API getStub() {
-    API got = supplier.get();
-    return getFromCache(got);
-  }
-
-  private API getFromCache(API got) {
-    synchronized (got) {
-      WeakReference<API> weakProxy = proxies.get(got);
-      API proxy = weakProxy == null ? null : weakProxy.get();
-      if (proxy == null) {
-        proxy = wrap(got);
-        proxies.put(got, new WeakReference<API>(proxy));
-      }
-      return proxy;
-    }
-  }
-
-  @SuppressWarnings("unchecked")
-  private API wrap(API got) {
-    Enhancer enhancer = new Enhancer();
-    enhancer.setSuperclass(got.getClass());
-    enhancer.setClassLoader(got.getClass().getClassLoader());
-    enhancer.setCallback(interceptor);
-    return (API) enhancer.create();
-  }
   
-  public API call() {
-    if (supplier == null) {
-      throw new ShiftyException("This shifty instance has no provider. Set one before calling call() or async()");
-    }
-    return getStub();
+  protected String getName() {
+    return supplier.getClass().getName();
   }
 
-  public <RETURN> Future<RETURN> async(Function<API, RETURN> call) {
-    if (executorService == null) {
-      throw new RuntimeException("This shifty instance has no ExecutorService. Set one before calling async().");
-    }
-    return executorService.submit(() -> call.apply(call()));
+  public <RETURN> ShiftyCall<API, RETURN> withFallback(Supplier<RETURN> fallback) {
+    ShiftyConfiguration<RETURN> conf = new ShiftyConfiguration<>();
+    conf.setFallback(fallback);
+    return new ShiftyCall<>(this, conf);
   }
-  
+
+  public <RETURN> ShiftyCall<API, RETURN> withTimeout(long timeoutMillis) {
+    ShiftyConfiguration<RETURN> conf = new ShiftyConfiguration<>();
+    conf.setTimeoutMillis(timeoutMillis);
+    return new ShiftyCall<>(this, conf);
+  }
+
+  public <RETURN, ERROR extends Exception> RETURN call(ShiftyMethod<API, RETURN, ERROR> call) throws ERROR {
+    return new ShiftyCall<>(this, new ShiftyConfiguration<RETURN>()).call(call);
+  }
+
+  public <RETURN, ERROR extends Exception> Future<RETURN> async(ShiftyMethod<API, RETURN, ERROR> call) throws ERROR {
+    return new ShiftyCall<>(this, new ShiftyConfiguration<RETURN>()).async(call);
+  }
+
   public void async(Consumer<API> call) {
+    new ShiftyCall<>(this, new ShiftyConfiguration<>()).async(call);
+  }
+
+  protected API getAPI() {
+    return supplier.get();
+  }
+
+  protected ExecutorService getExecutor() {
     if (executorService == null) {
-      throw new RuntimeException("This shifty instance has no ExecutorService. Set one before calling async().");
+      executorService = Executors.newCachedThreadPool();
     }
-    executorService.execute(()->call.accept(call()));
+    return getExecutorService();
   }
 
 }

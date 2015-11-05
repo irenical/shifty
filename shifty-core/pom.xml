@@ -36,10 +36,15 @@
 
   <dependencies>
     <dependency>
-      <groupId>cglib</groupId>
-      <artifactId>cglib</artifactId>
-      <version>3.1</version>
+      <groupId>com.netflix.hystrix</groupId>
+      <artifactId>hystrix-core</artifactId>
+      <version>1.4.14</version>
     </dependency>
+<!--     <dependency> -->
+<!--       <groupId>cglib</groupId> -->
+<!--       <artifactId>cglib</artifactId> -->
+<!--       <version>3.1</version> -->
+<!--     </dependency> -->
   </dependencies>
 
 </project>

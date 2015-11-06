@@ -1,5 +1,6 @@
 # Shifty
-[![Build Status](https://travis-ci.org/irenical/shifty.svg)](https://travis-ci.org/irenical/shifty)
+[![][travis img]][travis]
+[![][maven img]][maven]
 
 ## What for?
 If you have a shady Java object, holding a bunch of methods you don't trust, where anything can go wrong. Instead of trying to wrap method calls in a bunch of try/catch blocks, separate thread, some timeout mechanism and a retry logic, you can use Shifty.
@@ -27,3 +28,9 @@ String got = shifty.withTimeout(1000).call((api)->api.myRemoteMethod(9001));
 ```
 This call would giveup after 1 second.
 
+
+[travis]:https://travis-ci.org/irenical/shifty
+[travis img]:https://travis-ci.org/irenical/shifty.svg?branch=master
+
+[maven]:http://search.maven.org/#search|gav|1|g:"org.irenical.shifty"%20AND%20a:"shifty"
+[maven img]:https://maven-badges.herokuapp.com/maven-central/org.irenical.shifty/shifty/badge.svg

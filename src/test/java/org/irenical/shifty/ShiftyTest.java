@@ -54,5 +54,25 @@ public class ShiftyTest {
     String got = shifty.withFallback(()->"8999").withTimeout(1000).call((api) -> api.mySlowRemoteMethod(9001));
     Assert.assertEquals(got, "9001");
   }
+  
+  @Test
+  public void testAutoClose() {
+    MyAutoCloseableUnstableApi myApi = new MyAutoCloseableUnstableApi(100);
+    Shifty<MyAutoCloseableUnstableApi> shifty = new Shifty<>(() -> myApi);
+    ShiftyCall<MyAutoCloseableUnstableApi, String> call = shifty.withAutoClose();
+    String got = call.call((api) -> {
+      Assert.assertTrue(myApi.isOpen());
+      return api.myRemoteMethod(9001);
+      });
+    Assert.assertEquals(got, "9001");
+    Assert.assertFalse(myApi.isOpen());
+  }
+  
+  @Test(expected=RuntimeException.class)
+  public void testInvalidAutoClose() {
+    Shifty<MyUnstableApi> shifty = new Shifty<>(() -> new MyUnstableApi(100));
+    ShiftyCall<MyUnstableApi, String> call = shifty.withAutoClose();
+    call.call((api) -> api.myRemoteMethod(9001));
+  }
 
 }

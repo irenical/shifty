@@ -8,12 +8,15 @@ public class ShiftyConfiguration<RETURN> {
 
   private Supplier<RETURN> fallback;
 
+  private boolean autoClose;
+
   public ShiftyConfiguration() {
   }
 
   public ShiftyConfiguration(ShiftyConfiguration<RETURN> from) {
     this.timeoutMillis = from.timeoutMillis;
     this.fallback = from.fallback;
+    this.autoClose = from.autoClose;
   }
 
   public void setFallback(Supplier<RETURN> fallback) {
@@ -30,6 +33,14 @@ public class ShiftyConfiguration<RETURN> {
 
   public long getTimeoutMillis() {
     return timeoutMillis;
+  }
+
+  public void setAutoClose(boolean autoClose) {
+    this.autoClose = autoClose;
+  }
+
+  public boolean isAutoClose() {
+    return autoClose;
   }
 
 }

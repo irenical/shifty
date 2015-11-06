@@ -4,6 +4,9 @@ import java.util.concurrent.Future;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.netflix.hystrix.HystrixCommand;
 import com.netflix.hystrix.HystrixCommand.Setter;
 import com.netflix.hystrix.HystrixCommandGroupKey;
@@ -12,12 +15,14 @@ import com.netflix.hystrix.exception.HystrixBadRequestException;
 import com.netflix.hystrix.exception.HystrixRuntimeException;
 
 public class ShiftyCall<API, RETURN> {
+  
+  private static final Logger LOG = LoggerFactory.getLogger(ShiftyCall.class);
 
   private Shifty<API> shifty;
 
   private ShiftyConfiguration<RETURN> conf;
 
-  public ShiftyCall(Shifty<API> shifty, ShiftyConfiguration<RETURN> conf) {
+  protected ShiftyCall(Shifty<API> shifty, ShiftyConfiguration<RETURN> conf) {
     this.conf = conf;
     this.shifty = shifty;
   }
@@ -31,6 +36,12 @@ public class ShiftyCall<API, RETURN> {
   public ShiftyCall<API, RETURN> withTimeout(long timeoutMillis) {
     ShiftyConfiguration<RETURN> conf = new ShiftyConfiguration<RETURN>(this.conf);
     conf.setTimeoutMillis(timeoutMillis);
+    return new ShiftyCall<>(shifty, conf);
+  }
+  
+  public ShiftyCall<API, RETURN> withAutoClose() {
+    ShiftyConfiguration<RETURN> conf = new ShiftyConfiguration<RETURN>(this.conf);
+    conf.setAutoClose(true);
     return new ShiftyCall<>(shifty, conf);
   }
 
@@ -67,7 +78,9 @@ public class ShiftyCall<API, RETURN> {
           blewUp = e;
           throw e;
         } finally {
-          shifty.finalize(got);
+          if(conf.isAutoClose()){
+            autoClose(got);
+          }
         }
       }
 
@@ -79,6 +92,14 @@ public class ShiftyCall<API, RETURN> {
           throw (RuntimeException) blewUp;
         } else {
           throw new RuntimeException(blewUp);
+        }
+      }
+      
+      private void autoClose(API got) throws Exception {
+        if(got instanceof AutoCloseable){
+          ((AutoCloseable) got).close();
+        } else {
+          throw new RuntimeException("Could not close instance of " + got.getClass() + ", as it does not implement AutoCloseable");
         }
       }
     };

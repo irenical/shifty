@@ -11,21 +11,11 @@ public class Shifty<API> {
   private ExecutorService executorService;
 
   private Supplier<API> supplier;
-
-  private Consumer<API> finalizer;
-
+  
   public Shifty(Supplier<API> supplier) {
     setSupplier(supplier);
   }
-
-  public void setFinalizer(Consumer<API> finalizer) {
-    this.finalizer = finalizer;
-  }
-
-  public Consumer<API> getFinalizer() {
-    return finalizer;
-  }
-
+  
   public void setSupplier(Supplier<API> supplier) {
     if (supplier == null) {
       throw new ShiftyException("This shifty instance has no provider. Set one before calling call() or async()");
@@ -48,17 +38,17 @@ public class Shifty<API> {
   protected String getName() {
     return supplier.getClass().getName();
   }
+  
+  public <RETURN> ShiftyCall<API, RETURN> withAutoClose() {
+    return new ShiftyCall<>(this, new ShiftyConfiguration<RETURN>()).withAutoClose();
+  }
 
   public <RETURN> ShiftyCall<API, RETURN> withFallback(Supplier<RETURN> fallback) {
-    ShiftyConfiguration<RETURN> conf = new ShiftyConfiguration<>();
-    conf.setFallback(fallback);
-    return new ShiftyCall<>(this, conf);
+    return new ShiftyCall<>(this, new ShiftyConfiguration<RETURN>()).withFallback(fallback);
   }
 
   public <RETURN> ShiftyCall<API, RETURN> withTimeout(long timeoutMillis) {
-    ShiftyConfiguration<RETURN> conf = new ShiftyConfiguration<>();
-    conf.setTimeoutMillis(timeoutMillis);
-    return new ShiftyCall<>(this, conf);
+    return new ShiftyCall<>(this, new ShiftyConfiguration<RETURN>()).withTimeout(timeoutMillis);
   }
 
   public <RETURN, ERROR extends Exception> RETURN call(ShiftyMethod<API, RETURN, ERROR> call) throws ERROR {
@@ -84,10 +74,4 @@ public class Shifty<API> {
     return getExecutorService();
   }
 
-  protected void finalize(API api) {
-    if (finalizer != null) {
-      finalizer.accept(api);
-    }
-  }
-  
 }

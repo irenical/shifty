@@ -12,9 +12,17 @@ public class MyUnstableApi {
     return aNumber.toString();
   }
   
-  public String mySlowRemoteMethod(Integer aNumber) throws InterruptedException{
-    Thread.sleep(slowMethodDelay);
+  public String mySlowRemoteMethod(Integer aNumber) {
+    try {
+      Thread.sleep(slowMethodDelay);
+    } catch (InterruptedException e) {
+      return null;
+    }
     return aNumber.toString();
+  }
+  
+  public String myBrokenRemoteMethod(Integer aNumber) throws ContactSystemAdministratorException {
+    throw new ContactSystemAdministratorException();
   }
 
 }

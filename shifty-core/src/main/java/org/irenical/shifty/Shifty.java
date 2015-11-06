@@ -7,13 +7,23 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 public class Shifty<API> {
-  
+
   private ExecutorService executorService;
 
   private Supplier<API> supplier;
 
+  private Consumer<API> finalizer;
+
   public Shifty(Supplier<API> supplier) {
     setSupplier(supplier);
+  }
+
+  public void setFinalizer(Consumer<API> finalizer) {
+    this.finalizer = finalizer;
+  }
+
+  public Consumer<API> getFinalizer() {
+    return finalizer;
   }
 
   public void setSupplier(Supplier<API> supplier) {
@@ -34,7 +44,7 @@ public class Shifty<API> {
   public ExecutorService getExecutorService() {
     return executorService;
   }
-  
+
   protected String getName() {
     return supplier.getClass().getName();
   }
@@ -74,4 +84,10 @@ public class Shifty<API> {
     return getExecutorService();
   }
 
+  protected void finalize(API api) {
+    if (finalizer != null) {
+      finalizer.accept(api);
+    }
+  }
+  
 }

@@ -5,7 +5,11 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 import com.netflix.hystrix.HystrixCommand;
+import com.netflix.hystrix.HystrixCommand.Setter;
 import com.netflix.hystrix.HystrixCommandGroupKey;
+import com.netflix.hystrix.HystrixCommandProperties;
+import com.netflix.hystrix.exception.HystrixBadRequestException;
+import com.netflix.hystrix.exception.HystrixRuntimeException;
 
 public class ShiftyCall<API, RETURN> {
 
@@ -31,26 +35,50 @@ public class ShiftyCall<API, RETURN> {
   }
 
   public <ERROR extends Exception> RETURN call(ShiftyMethod<API, RETURN, ERROR> call) throws ERROR {
-    return getHystrixCommand(call).execute();
+    try {
+      return getHystrixCommand(call).execute();
+    } catch (HystrixRuntimeException | HystrixBadRequestException e) {
+      if (e.getCause() instanceof RuntimeException) {
+        throw (RuntimeException) e.getCause();
+      } else if (e.getCause() != null) {
+        throw (ERROR) e.getCause();
+      } else {
+        throw e;
+      }
+    }
   }
 
   private <ERROR extends Exception> HystrixCommand<RETURN> getHystrixCommand(ShiftyMethod<API, RETURN, ERROR> call) {
     int timeout = (int) conf.getTimeoutMillis();
-    timeout = timeout == 0 ? 100000 : timeout;
-    HystrixCommand<RETURN> command = new HystrixCommand<RETURN>(HystrixCommandGroupKey.Factory.asKey(shifty.getName()),timeout) {
+    Setter setter = Setter.withGroupKey(HystrixCommandGroupKey.Factory.asKey(shifty.getName()));
+    if (timeout > 0) {
+      setter = setter.andCommandPropertiesDefaults(HystrixCommandProperties.Setter().withExecutionTimeoutEnabled(true).withExecutionTimeoutInMilliseconds(timeout));
+    }
+    HystrixCommand<RETURN> command = new HystrixCommand<RETURN>(setter) {
+
+      private volatile Exception blewUp;
 
       @Override
       protected RETURN run() throws Exception {
         API got = shifty.getAPI();
-        return call.apply(got);
+        try {
+          return call.apply(got);
+        } catch (Exception e) {
+          blewUp = e;
+          throw e;
+        } finally {
+          shifty.finalize(got);
+        }
       }
 
       @Override
       protected RETURN getFallback() {
         if (conf.getFallback() != null) {
           return conf.getFallback().get();
+        } else if (blewUp instanceof RuntimeException) {
+          throw (RuntimeException) blewUp;
         } else {
-          return super.getFallback();
+          throw new RuntimeException(blewUp);
         }
       }
     };

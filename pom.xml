@@ -9,7 +9,7 @@
   </parent>
 
   <groupId>org.irenical.shifty</groupId>
-  <artifactId>shifty-api</artifactId>
+  <artifactId>shifty</artifactId>
   <version>1.0.0-SNAPSHOT</version>
 
   <name>Shifty Core</name>
@@ -40,11 +40,12 @@
       <artifactId>hystrix-core</artifactId>
       <version>1.4.14</version>
     </dependency>
-<!--     <dependency> -->
-<!--       <groupId>cglib</groupId> -->
-<!--       <artifactId>cglib</artifactId> -->
-<!--       <version>3.1</version> -->
-<!--     </dependency> -->
+    <dependency>
+      <groupId>io.reactivex</groupId>
+      <artifactId>rxjava</artifactId>
+      <version>1.0.7</version>
+      <scope>compile</scope>
+    </dependency>
   </dependencies>
 
 </project>

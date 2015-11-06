@@ -40,5 +40,19 @@ public class ShiftyTest {
     String got = shifty.withFallback(()->"8999").call((api) -> api.myBrokenRemoteMethod(9001));
     Assert.assertEquals(got, "8999");
   }
+  
+  @Test
+  public void testSlowCallFallback() throws ContactSystemAdministratorException {
+    Shifty<MyUnstableApi> shifty = new Shifty<>(() -> new MyUnstableApi(3000));
+    String got = shifty.withFallback(()->"8999").withTimeout(1000).call((api) -> api.mySlowRemoteMethod(9001));
+    Assert.assertEquals(got, "8999");
+  }
+  
+  @Test
+  public void testSlowCallWentOK() throws ContactSystemAdministratorException {
+    Shifty<MyUnstableApi> shifty = new Shifty<>(() -> new MyUnstableApi(100));
+    String got = shifty.withFallback(()->"8999").withTimeout(1000).call((api) -> api.mySlowRemoteMethod(9001));
+    Assert.assertEquals(got, "9001");
+  }
 
 }
